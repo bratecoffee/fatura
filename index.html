@@ -1,1 +1,470 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Çoklu Mülk & Fatura Takip Sistemi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
 
+  <!-- Header -->
+  <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-500/30">
+          <i class="fa-solid fa-city text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Mülk & Fatura Takip</h1>
+          <p class="text-xs text-slate-400">Cloudflare D1 & GitHub Pages Ready</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="openPropertyModal()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-3.5 py-2 rounded-lg font-medium transition flex items-center gap-2 border border-slate-600">
+          <i class="fa-solid fa-house-gear text-indigo-400"></i> Mülkleri Yönet
+        </button>
+        <button onclick="openBillModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg font-medium transition shadow-lg shadow-indigo-600/20 flex items-center gap-2">
+          <i class="fa-solid fa-plus"></i> Fatura Ekle
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- Top Bar: Property Filter & Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      
+      <!-- Property Selector Card -->
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 md:col-span-1">
+        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Aktif Mülk / Görünüm</label>
+        <select id="propertyFilter" onchange="filterBills()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+          <option value="ALL">🏢 TÜM MÜLKLER (Toplu Gösterim)</option>
+        </select>
+        <div id="activePropertyDetails" class="mt-3 text-xs text-slate-400 border-t border-slate-700/50 pt-2 hidden"></div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center gap-4">
+        <div class="p-3 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20">
+          <i class="fa-solid fa-clock-rotate-left text-xl"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Bekleyen Toplam</p>
+          <h3 id="statUnpaid" class="text-xl font-bold text-slate-100">0 ₺</h3>
+        </div>
+      </div>
+
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center gap-4">
+        <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20">
+          <i class="fa-solid fa-circle-check text-xl"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Ödenen Toplam</p>
+          <h3 id="statPaid" class="text-xl font-bold text-slate-100">0 ₺</h3>
+        </div>
+      </div>
+
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center gap-4">
+        <div class="p-3 bg-blue-500/10 text-blue-400 rounded-lg border border-blue-500/20">
+          <i class="fa-solid fa-building-columns text-xl"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Otomatik Ödemedekiler</p>
+          <h3 id="statAutoPay" class="text-xl font-bold text-slate-100">0 ₺</h3>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Main Content Area: Filters & List -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Left Column: Bill List -->
+      <div class="lg:col-span-2 space-y-4">
+        
+        <!-- Filters Bar -->
+        <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-wrap gap-2 items-center justify-between">
+          <div class="flex gap-1 bg-slate-900 p-1 rounded-lg border border-slate-700">
+            <button onclick="setStatusFilter('ALL')" id="btnStatusALL" class="px-3 py-1.5 text-xs font-semibold rounded-md bg-indigo-600 text-white">Tümü</button>
+            <button onclick="setStatusFilter('UNPAID')" id="btnStatusUNPAID" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-white">Ödenecekler</button>
+            <button onclick="setStatusFilter('PAID')" id="btnStatusPAID" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-white">Ödenenler</button>
+            <button onclick="setStatusFilter('AUTO')" id="btnStatusAUTO" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-white">Otomatik Ödeme</button>
+          </div>
+          <input type="text" id="searchInput" oninput="filterBills()" placeholder="Fatura ara..." class="bg-slate-900 border border-slate-700 text-xs text-slate-200 px-3 py-2 rounded-lg outline-none focus:border-indigo-500 w-full sm:w-48">
+        </div>
+
+        <!-- Bill Cards Container -->
+        <div id="billContainer" class="space-y-3"></div>
+
+      </div>
+
+      <!-- Right Column: Analytics -->
+      <div class="space-y-6">
+        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+          <h3 class="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-indigo-400"></i> Mülk Bazlı Harcama
+          </h3>
+          <div class="h-64">
+            <canvas id="propertyChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Modal: Fatura Ekle / Düzenle -->
+  <div id="billModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+        <h3 id="modalTitle" class="font-bold text-slate-100">Yeni Fatura Ekle</h3>
+        <button onclick="closeBillModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="billForm" onsubmit="saveBill(event)" class="space-y-3">
+        <input type="hidden" id="billId">
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Mülk Seçin</label>
+          <select id="billPropertyId" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none" required></select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Fatura Türü / Açıklama</label>
+          <select id="billCategory" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none">
+            <option value="Elektrik">⚡ Elektrik Faturası</option>
+            <option value="Su">💧 Su Faturası</option>
+            <option value="Doğalgaz">🔥 Doğalgaz Faturası</option>
+            <option value="İnternet">🌐 İnternet / TV</option>
+            <option value="Aidat">🏢 Site / Ev Aidatı</option>
+            <option value="Diğer">📦 Diğer</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Tutar (TL)</label>
+            <input type="number" step="0.01" id="billAmount" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none" placeholder="0.00" required>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Son Ödeme Tarihi</label>
+            <input type="date" id="billDueDate" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none" required>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 bg-slate-900 p-3 rounded-lg border border-slate-700">
+          <input type="checkbox" id="billIsAutoPay" class="w-4 h-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500">
+          <label for="billIsAutoPay" class="text-xs font-medium text-slate-300 flex items-center gap-2">
+            <i class="fa-solid fa-building-columns text-blue-400"></i> Bankada Otomatik Ödemede
+          </label>
+        </div>
+
+        <div class="flex items-center gap-3 bg-slate-900 p-3 rounded-lg border border-slate-700">
+          <input type="checkbox" id="billIsPaid" class="w-4 h-4 rounded border-slate-700 text-emerald-600 focus:ring-emerald-500">
+          <label for="billIsPaid" class="text-xs font-medium text-slate-300">Ödendi Olarak İşaretle</label>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeBillModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold rounded-lg">İptal</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Mülk Yönetimi -->
+  <div id="propertyModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+        <h3 class="font-bold text-slate-100">Mülk & Abonelik Yönetimi</h3>
+        <button onclick="closePropertyModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form onsubmit="addProperty(event)" class="space-y-3 bg-slate-900 p-3 rounded-xl border border-slate-700">
+        <div class="grid grid-cols-2 gap-2">
+          <input type="text" id="propName" placeholder="Mülk Adı (örn: Ev 1, Ofis)" class="bg-slate-800 border border-slate-700 text-xs text-slate-200 p-2 rounded-lg outline-none" required>
+          <input type="text" id="propAddress" placeholder="Adres / Not" class="bg-slate-800 border border-slate-700 text-xs text-slate-200 p-2 rounded-lg outline-none">
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-xs">
+          <input type="text" id="propElekNo" placeholder="Elektrik Abone No" class="bg-slate-800 border border-slate-700 text-slate-200 p-2 rounded-lg outline-none">
+          <input type="text" id="propSuNo" placeholder="Su Abone No" class="bg-slate-800 border border-slate-700 text-slate-200 p-2 rounded-lg outline-none">
+          <input type="text" id="propGazNo" placeholder="Gaz Abone No" class="bg-slate-800 border border-slate-700 text-slate-200 p-2 rounded-lg outline-none">
+        </div>
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 rounded-lg transition">+ Mülk Ekle</button>
+      </form>
+
+      <div id="propertyList" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+    </div>
+  </div>
+
+  <script>
+    let properties = JSON.parse(localStorage.getItem('properties')) || [
+      { id: '1', name: 'Ev 1', address: 'Kadıköy', elekNo: '1029384', suNo: '99281', gazNo: '55123' },
+      { id: '2', name: 'Ev 2', address: 'Bodrum', elekNo: '3349201', suNo: '11029', gazNo: '' },
+      { id: '3', name: 'Ofis', address: 'Levent', elekNo: '7728192', suNo: '88392', gazNo: '99120' }
+    ];
+
+    let bills = JSON.parse(localStorage.getItem('bills')) || [
+      { id: '101', propertyId: '1', category: 'Elektrik', amount: 840, dueDate: '2026-11-20', isPaid: false, isAutoPay: true },
+      { id: '102', propertyId: '1', category: 'Doğalgaz', amount: 1450, dueDate: '2026-11-18', isPaid: false, isAutoPay: false },
+      { id: '103', propertyId: '2', category: 'Su', amount: 320, dueDate: '2026-11-25', isPaid: true, isAutoPay: true }
+    ];
+
+    let currentStatusFilter = 'ALL';
+    let myChart = null;
+
+    function saveState() {
+      localStorage.setItem('properties', JSON.stringify(properties));
+      localStorage.setItem('bills', JSON.stringify(bills));
+      render();
+    }
+
+    function render() {
+      renderPropertyOptions();
+      renderBills();
+      renderStats();
+      renderChart();
+    }
+
+    function renderPropertyOptions() {
+      const select = document.getElementById('propertyFilter');
+      const billSelect = document.getElementById('billPropertyId');
+      const currentVal = select.value;
+
+      select.innerHTML = '<option value="ALL">🏢 TÜM MÜLKLER (Toplu Gösterim)</option>';
+      billSelect.innerHTML = '';
+
+      properties.forEach(p => {
+        select.innerHTML += `<option value="${p.id}">📍 ${p.name}</option>`;
+        billSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+      });
+
+      select.value = currentVal || 'ALL';
+
+      const activeId = select.value;
+      const detailBox = document.getElementById('activePropertyDetails');
+      if (activeId !== 'ALL') {
+        const p = properties.find(x => x.id === activeId);
+        if (p) {
+          detailBox.classList.remove('hidden');
+          detailBox.innerHTML = `
+            <div class="space-y-1">
+              <div><strong>Elek:</strong> ${p.elekNo || '-'} | <strong>Su:</strong> ${p.suNo || '-'}</div>
+              <div><strong>Gaz:</strong> ${p.gazNo || '-'}</div>
+            </div>
+          `;
+        }
+      } else {
+        detailBox.classList.add('hidden');
+      }
+    }
+
+    function renderBills() {
+      const container = document.getElementById('billContainer');
+      const activeProp = document.getElementById('propertyFilter').value;
+      const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+
+      const filtered = bills.filter(b => {
+        if (activeProp !== 'ALL' && b.propertyId !== activeProp) return false;
+        if (currentStatusFilter === 'UNPAID' && b.isPaid) return false;
+        if (currentStatusFilter === 'PAID' && !b.isPaid) return false;
+        if (currentStatusFilter === 'AUTO' && !b.isAutoPay) return false;
+        
+        const prop = properties.find(p => p.id === b.propertyId);
+        const searchText = `${b.category} ${prop ? prop.name : ''}`.toLowerCase();
+        if (searchQuery && !searchText.includes(searchQuery)) return false;
+
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="bg-slate-800 p-8 text-center rounded-xl border border-slate-700 text-slate-400 text-sm">
+            Fatura bulunamadı.
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(b => {
+        const prop = properties.find(p => p.id === b.propertyId) || { name: 'Bilinmeyen Mülk' };
+        
+        return `
+          <div class="bg-slate-800 p-4 rounded-xl border ${b.isPaid ? 'border-slate-700/60 opacity-75' : 'border-slate-700'} flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold ${b.isPaid ? 'bg-slate-700 text-slate-400' : 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'}">
+                ${b.category.charAt(0)}
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-indigo-400 bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-800/50">${prop.name}</span>
+                  <h4 class="font-semibold text-slate-100 text-sm">${b.category}</h4>
+                  ${b.isAutoPay ? '<span class="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded flex items-center gap-1"><i class="fa-solid fa-building-columns"></i> Otomatik</span>' : ''}
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Son Ödeme: <span class="font-medium text-slate-300">${b.dueDate}</span></p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+              <div class="text-right">
+                <div class="font-bold text-slate-100">${parseFloat(b.amount).toLocaleString('tr-TR')} ₺</div>
+                <span class="text-[11px] font-semibold ${b.isPaid ? 'text-emerald-400' : 'text-amber-400'}">
+                  ${b.isPaid ? '✓ Ödendi' : '• Ödeme Bekliyor'}
+                </span>
+              </div>
+              <div class="flex gap-1">
+                <button onclick="togglePay('${b.id}')" class="p-2 text-xs rounded-lg ${b.isPaid ? 'bg-slate-700 text-slate-300' : 'bg-emerald-600 text-white'} hover:opacity-90">
+                  <i class="fa-solid ${b.isPaid ? 'fa-rotate-left' : 'fa-check'}"></i>
+                </button>
+                <button onclick="deleteBill('${b.id}')" class="p-2 text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderStats() {
+      const activeProp = document.getElementById('propertyFilter').value;
+      const targetBills = activeProp === 'ALL' ? bills : bills.filter(b => b.propertyId === activeProp);
+
+      const unpaid = targetBills.filter(b => !b.isPaid).reduce((sum, b) => sum + parseFloat(b.amount), 0);
+      const paid = targetBills.filter(b => b.isPaid).reduce((sum, b) => sum + parseFloat(b.amount), 0);
+      const auto = targetBills.filter(b => b.isAutoPay).reduce((sum, b) => sum + parseFloat(b.amount), 0);
+
+      document.getElementById('statUnpaid').innerText = unpaid.toLocaleString('tr-TR') + ' ₺';
+      document.getElementById('statPaid').innerText = paid.toLocaleString('tr-TR') + ' ₺';
+      document.getElementById('statAutoPay').innerText = auto.toLocaleString('tr-TR') + ' ₺';
+    }
+
+    function renderChart() {
+      const ctx = document.getElementById('propertyChart').getContext('2d');
+      
+      const propTotals = properties.map(p => {
+        return bills.filter(b => b.propertyId === p.id).reduce((sum, b) => sum + parseFloat(b.amount), 0);
+      });
+
+      if (myChart) myChart.destroy();
+
+      myChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: properties.map(p => p.name),
+          datasets: [{
+            data: propTotals,
+            backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } }
+          }
+        }
+      });
+    }
+
+    function filterBills() { render(); }
+
+    function setStatusFilter(status) {
+      currentStatusFilter = status;
+      ['ALL', 'UNPAID', 'PAID', 'AUTO'].forEach(s => {
+        const btn = document.getElementById(`btnStatus${s}`);
+        if (s === status) {
+          btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-md bg-indigo-600 text-white';
+        } else {
+          btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-white';
+        }
+      });
+      renderBills();
+    }
+
+    function togglePay(id) {
+      const b = bills.find(x => x.id === id);
+      if (b) {
+        b.isPaid = !b.isPaid;
+        saveState();
+      }
+    }
+
+    function deleteBill(id) {
+      bills = bills.filter(x => x.id !== id);
+      saveState();
+    }
+
+    function openBillModal() { document.getElementById('billModal').classList.remove('hidden'); }
+    function closeBillModal() { document.getElementById('billModal').classList.add('hidden'); }
+
+    function saveBill(e) {
+      e.preventDefault();
+      const newBill = {
+        id: Date.now().toString(),
+        propertyId: document.getElementById('billPropertyId').value,
+        category: document.getElementById('billCategory').value,
+        amount: parseFloat(document.getElementById('billAmount').value),
+        dueDate: document.getElementById('billDueDate').value,
+        isAutoPay: document.getElementById('billIsAutoPay').checked,
+        isPaid: document.getElementById('billIsPaid').checked
+      };
+      bills.push(newBill);
+      saveState();
+      closeBillModal();
+      document.getElementById('billForm').reset();
+    }
+
+    function openPropertyModal() {
+      renderPropertyList();
+      document.getElementById('propertyModal').classList.remove('hidden');
+    }
+    function closePropertyModal() { document.getElementById('propertyModal').classList.add('hidden'); }
+
+    function addProperty(e) {
+      e.preventDefault();
+      const newProp = {
+        id: Date.now().toString(),
+        name: document.getElementById('propName').value,
+        address: document.getElementById('propAddress').value,
+        elekNo: document.getElementById('propElekNo').value,
+        suNo: document.getElementById('propSuNo').value,
+        gazNo: document.getElementById('propGazNo').value
+      };
+      properties.push(newProp);
+      saveState();
+      renderPropertyList();
+      e.target.reset();
+    }
+
+    function renderPropertyList() {
+      const container = document.getElementById('propertyList');
+      container.innerHTML = properties.map(p => `
+        <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-700 text-xs flex justify-between items-center">
+          <div>
+            <div class="font-semibold text-slate-200">${p.name}</div>
+            <div class="text-slate-400 text-[11px]">E:${p.elekNo || '-'} | S:${p.suNo || '-'} | G:${p.gazNo || '-'}</div>
+          </div>
+          <button onclick="deleteProperty('${p.id}')" class="text-red-400 hover:text-red-300 p-1"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      `).join('');
+    }
+
+    function deleteProperty(id) {
+      properties = properties.filter(p => p.id !== id);
+      bills = bills.filter(b => b.propertyId !== id);
+      saveState();
+      renderPropertyList();
+    }
+
+    render();
+  </script>
+</body>
+</html>
