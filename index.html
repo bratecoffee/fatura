@@ -134,7 +134,6 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Fatura / Ödeme Türü</label>
-            <!-- SERBEST METİN VE ÖNERİ LİSTESİ -->
             <input type="text" id="billCategory" list="categoryOptions" onchange="autoFillLastBillTemplate()" placeholder="Örn: Digiturk, Spotify" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none" required>
             <datalist id="categoryOptions">
               <option value="Elektrik"></option>
@@ -265,6 +264,10 @@
         ]);
         properties = await resProp.json();
         bills = await resBill.json();
+
+        // Mülkleri Türkçe Alfabetik Sırala (A-Z)
+        properties.sort((a, b) => a.name.localeCompare(b.name, 'tr', { sensitivity: 'base' }));
+
         render();
       } catch (err) {
         console.error("Veri yüklenemedi:", err);
@@ -287,6 +290,7 @@
       select.innerHTML = '<option value="ALL">🏢 TÜM MÜLKLER (Toplu Gösterim)</option>';
       billSelect.innerHTML = '';
 
+      // Sıralanmış Mülkleri Ekleyeceğiz
       properties.forEach(p => {
         select.innerHTML += `<option value="${p.id}">📍 ${p.name}</option>`;
         billSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
@@ -357,7 +361,8 @@
       const activeProp = document.getElementById('propertyFilter').value;
       const searchQuery = document.getElementById('searchInput').value.toLowerCase();
 
-      const filtered = bills.filter(b => {
+      // 1. Filtreleme
+      let filtered = bills.filter(b => {
         if (activeProp !== 'ALL' && b.propertyId !== activeProp) return false;
         if (currentStatusFilter === 'UNPAID' && b.isPaid) return false;
         if (currentStatusFilter === 'PAID' && !b.isPaid) return false;
@@ -368,6 +373,19 @@
         if (searchQuery && !searchText.includes(searchQuery)) return false;
 
         return true;
+      });
+
+      // 2. ÇİFT KATMANLI ALFABETİK SIRALAMA (Mülk Adı A-Z -> Fatura Türü A-Z)
+      filtered.sort((a, b) => {
+        const propA = properties.find(p => p.id === a.propertyId)?.name || '';
+        const propB = properties.find(p => p.id === b.propertyId)?.name || '';
+
+        // Önce Mülk İsmine Göre Sırala (Bornova Ev < Brate Coffee)
+        const propCompare = propA.localeCompare(propB, 'tr', { sensitivity: 'base' });
+        if (propCompare !== 0) return propCompare;
+
+        // Mülkler aynıysa Fatura İsmine Göre Sırala (Digiturk < Elektrik < Su)
+        return a.category.localeCompare(b.category, 'tr', { sensitivity: 'base' });
       });
 
       if (filtered.length === 0) {
@@ -448,7 +466,9 @@
         bankTotals[key] = (bankTotals[key] || 0) + parseFloat(b.amount);
       });
 
-      const keys = Object.keys(bankTotals);
+      // İsimleri Alfabetik Sırala
+      const keys = Object.keys(bankTotals).sort((a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' }));
+      
       if (keys.length === 0) {
         container.innerHTML = `<div class="text-slate-500 italic">Otomatik ödeme bekleyen fatura yok.</div>`;
         return;
@@ -467,6 +487,8 @@
 
     function renderChart() {
       const ctx = document.getElementById('propertyChart').getContext('2d');
+      
+      // Alfabetik Sıralanmış Mülklere Göre Grafik Verileri
       const propTotals = properties.map(p => {
         return bills.filter(b => b.propertyId === p.id).reduce((sum, b) => sum + parseFloat(b.amount), 0);
       });
