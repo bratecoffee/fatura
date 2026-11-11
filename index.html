@@ -157,11 +157,13 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Tutar (TL)</label>
-            <input type="number" step="0.01" id="billAmount" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none" placeholder="0.00" required>
+            <!-- 0 TL (Peşin Ödenenler) Girişine İzin Verildi (min="0") -->
+            <input type="number" step="0.01" min="0" id="billAmount" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none" placeholder="0.00" value="0">
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Son Ödeme Tarihi</label>
-            <input type="date" id="billDueDate" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none" required>
+            <!-- Tarih Seçimi Opsiyonel Hale Getirildi (Boş Bırakılabilir ya da Yıllık Tarih Seçilebilir) -->
+            <input type="date" id="billDueDate" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none">
           </div>
         </div>
 
@@ -199,7 +201,7 @@
 
         <div class="flex items-center gap-3 bg-slate-900 p-3 rounded-lg border border-slate-700">
           <input type="checkbox" id="billIsPaid" class="w-4 h-4 rounded border-slate-700 text-emerald-600 focus:ring-emerald-500">
-          <label for="billIsPaid" class="text-xs font-medium text-slate-300">Ödendi Olarak İşaretle</label>
+          <label for="billIsPaid" class="text-xs font-medium text-slate-300">Ödendi Olarak İşaretle / Peşin Ödendi</label>
         </div>
 
         <div class="pt-2 flex justify-end gap-2">
@@ -265,7 +267,6 @@
         properties = await resProp.json();
         bills = await resBill.json();
 
-        // Mülkleri Türkçe Alfabetik Sırala (A-Z)
         properties.sort((a, b) => a.name.localeCompare(b.name, 'tr', { sensitivity: 'base' }));
 
         render();
@@ -290,7 +291,6 @@
       select.innerHTML = '<option value="ALL">🏢 TÜM MÜLKLER (Toplu Gösterim)</option>';
       billSelect.innerHTML = '';
 
-      // Sıralanmış Mülkleri Ekleyeceğiz
       properties.forEach(p => {
         select.innerHTML += `<option value="${p.id}">📍 ${p.name}</option>`;
         billSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
@@ -361,7 +361,6 @@
       const activeProp = document.getElementById('propertyFilter').value;
       const searchQuery = document.getElementById('searchInput').value.toLowerCase();
 
-      // 1. Filtreleme
       let filtered = bills.filter(b => {
         if (activeProp !== 'ALL' && b.propertyId !== activeProp) return false;
         if (currentStatusFilter === 'UNPAID' && b.isPaid) return false;
@@ -375,16 +374,13 @@
         return true;
       });
 
-      // 2. ÇİFT KATMANLI ALFABETİK SIRALAMA (Mülk Adı A-Z -> Fatura Türü A-Z)
       filtered.sort((a, b) => {
         const propA = properties.find(p => p.id === a.propertyId)?.name || '';
         const propB = properties.find(p => p.id === b.propertyId)?.name || '';
 
-        // Önce Mülk İsmine Göre Sırala (Bornova Ev < Brate Coffee)
         const propCompare = propA.localeCompare(propB, 'tr', { sensitivity: 'base' });
         if (propCompare !== 0) return propCompare;
 
-        // Mülkler aynıysa Fatura İsmine Göre Sırala (Digiturk < Elektrik < Su)
         return a.category.localeCompare(b.category, 'tr', { sensitivity: 'base' });
       });
 
@@ -398,6 +394,8 @@
 
       container.innerHTML = filtered.map(b => {
         const prop = properties.find(p => p.id === b.propertyId) || { name: 'Mülk Silinmiş' };
+        const amountVal = parseFloat(b.amount || 0);
+        const isZeroAmount = amountVal === 0;
         
         return `
           <div class="bg-slate-800 p-4 rounded-xl border ${b.isPaid ? 'border-slate-700/60 opacity-75' : 'border-slate-700'} flex items-center justify-between gap-4">
@@ -410,9 +408,10 @@
                   <span class="text-xs font-bold text-indigo-400 bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-800/50">${prop.name}</span>
                   <h4 class="font-semibold text-slate-100 text-sm">${b.category}</h4>
                   ${b.isAutoPay ? `<span class="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded flex items-center gap-1"><i class="fa-solid fa-building-columns"></i> ${b.accountOwner || 'Kişi'} - ${b.bankName || 'Banka'}</span>` : ''}
+                  ${isZeroAmount ? `<span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-medium">Yıllık Peşin (0 ₺)</span>` : ''}
                 </div>
                 <div class="text-xs text-slate-400 mt-1 flex gap-3 flex-wrap">
-                  <span>Son Ödeme: <strong class="text-slate-300">${b.dueDate}</strong></span>
+                  <span>Son Ödeme: <strong class="text-slate-300">${b.dueDate || 'Tarih Girilmedi'}</strong></span>
                   ${b.aboneNo ? `<span>Abone/No: <strong class="text-slate-300">${b.aboneNo}</strong></span>` : ''}
                 </div>
               </div>
@@ -420,9 +419,9 @@
 
             <div class="flex items-center gap-4">
               <div class="text-right">
-                <div class="font-bold text-slate-100">${parseFloat(b.amount).toLocaleString('tr-TR')} ₺</div>
+                <div class="font-bold text-slate-100">${amountVal.toLocaleString('tr-TR')} ₺</div>
                 <span class="text-[11px] font-semibold ${b.isPaid ? 'text-emerald-400' : 'text-amber-400'}">
-                  ${b.isPaid ? '✓ Ödendi' : '• Ödeme Bekliyor'}
+                  ${b.isPaid ? '✓ Ödendi / Peşin' : '• Ödeme Bekliyor'}
                 </span>
               </div>
               <div class="flex gap-1">
@@ -446,9 +445,9 @@
       const activeProp = document.getElementById('propertyFilter').value;
       const targetBills = activeProp === 'ALL' ? bills : bills.filter(b => b.propertyId === activeProp);
 
-      const unpaid = targetBills.filter(b => !b.isPaid).reduce((sum, b) => sum + parseFloat(b.amount), 0);
-      const paid = targetBills.filter(b => b.isPaid).reduce((sum, b) => sum + parseFloat(b.amount), 0);
-      const auto = targetBills.filter(b => b.isAutoPay).reduce((sum, b) => sum + parseFloat(b.amount), 0);
+      const unpaid = targetBills.filter(b => !b.isPaid).reduce((sum, b) => sum + parseFloat(b.amount || 0), 0);
+      const paid = targetBills.filter(b => b.isPaid).reduce((sum, b) => sum + parseFloat(b.amount || 0), 0);
+      const auto = targetBills.filter(b => b.isAutoPay).reduce((sum, b) => sum + parseFloat(b.amount || 0), 0);
 
       document.getElementById('statUnpaid').innerText = unpaid.toLocaleString('tr-TR') + ' ₺';
       document.getElementById('statPaid').innerText = paid.toLocaleString('tr-TR') + ' ₺';
@@ -463,10 +462,9 @@
         const owner = b.accountOwner || 'Belirtilmedi';
         const bank = b.bankName || 'Belirtilmedi';
         const key = `${owner} (${bank})`;
-        bankTotals[key] = (bankTotals[key] || 0) + parseFloat(b.amount);
+        bankTotals[key] = (bankTotals[key] || 0) + parseFloat(b.amount || 0);
       });
 
-      // İsimleri Alfabetik Sırala
       const keys = Object.keys(bankTotals).sort((a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' }));
       
       if (keys.length === 0) {
@@ -488,9 +486,8 @@
     function renderChart() {
       const ctx = document.getElementById('propertyChart').getContext('2d');
       
-      // Alfabetik Sıralanmış Mülklere Göre Grafik Verileri
       const propTotals = properties.map(p => {
-        return bills.filter(b => b.propertyId === p.id).reduce((sum, b) => sum + parseFloat(b.amount), 0);
+        return bills.filter(b => b.propertyId === p.id).reduce((sum, b) => sum + parseFloat(b.amount || 0), 0);
       });
 
       if (myChart) myChart.destroy();
@@ -543,6 +540,7 @@
       document.getElementById('billId').value = '';
       document.getElementById('modalTitle').innerText = 'Yeni Fatura Ekle';
       document.getElementById('billForm').reset();
+      document.getElementById('billAmount').value = '0';
       document.getElementById('billModal').classList.remove('hidden');
       autoFillLastBillTemplate();
     }
@@ -556,8 +554,8 @@
       document.getElementById('billPropertyId').value = b.propertyId;
       document.getElementById('billCategory').value = b.category;
       document.getElementById('billAboneNo').value = b.aboneNo || '';
-      document.getElementById('billAmount').value = b.amount;
-      document.getElementById('billDueDate').value = b.dueDate;
+      document.getElementById('billAmount').value = b.amount !== undefined ? b.amount : 0;
+      document.getElementById('billDueDate').value = b.dueDate || '';
       document.getElementById('billIsAutoPay').checked = b.isAutoPay || false;
       document.getElementById('billAccountOwner').value = b.accountOwner || '';
       document.getElementById('billBankName').value = b.bankName || 'Garanti BBVA';
@@ -576,14 +574,15 @@
       e.preventDefault();
       const billId = document.getElementById('billId').value;
       const isAuto = document.getElementById('billIsAutoPay').checked;
+      const amountRaw = document.getElementById('billAmount').value;
 
       const billData = {
         id: billId || Date.now().toString(),
         propertyId: document.getElementById('billPropertyId').value,
         category: document.getElementById('billCategory').value.trim(),
         aboneNo: document.getElementById('billAboneNo').value,
-        amount: parseFloat(document.getElementById('billAmount').value),
-        dueDate: document.getElementById('billDueDate').value,
+        amount: amountRaw !== '' ? parseFloat(amountRaw) : 0,
+        dueDate: document.getElementById('billDueDate').value || '',
         isAutoPay: isAuto,
         accountOwner: isAuto ? document.getElementById('billAccountOwner').value : '',
         bankName: isAuto ? document.getElementById('billBankName').value : '',
