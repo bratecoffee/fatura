@@ -133,19 +133,25 @@
         
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Fatura Türü</label>
-            <select id="billCategory" onchange="autoFillLastBillTemplate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none">
-              <option value="Elektrik">⚡ Elektrik</option>
-              <option value="Su">💧 Su</option>
-              <option value="Doğalgaz">🔥 Doğalgaz</option>
-              <option value="İnternet">🌐 İnternet / TV</option>
-              <option value="Aidat">🏢 Site / Ev Aidatı</option>
-              <option value="Diğer">📦 Diğer</option>
-            </select>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Fatura / Ödeme Türü</label>
+            <!-- SERBEST METİN VE ÖNERİ LİSTESİ -->
+            <input type="text" id="billCategory" list="categoryOptions" onchange="autoFillLastBillTemplate()" placeholder="Örn: Digiturk, Spotify" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none" required>
+            <datalist id="categoryOptions">
+              <option value="Elektrik"></option>
+              <option value="Su"></option>
+              <option value="Doğalgaz"></option>
+              <option value="İnternet"></option>
+              <option value="Digiturk"></option>
+              <option value="Spotify"></option>
+              <option value="YouTube"></option>
+              <option value="Kredi Kartı"></option>
+              <option value="Aidat"></option>
+              <option value="Diğer"></option>
+            </datalist>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Abone / Tesisat No</label>
-            <input type="text" id="billAboneNo" placeholder="Abone No" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none">
+            <input type="text" id="billAboneNo" placeholder="Abone / Kart No" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none">
           </div>
         </div>
 
@@ -160,7 +166,6 @@
           </div>
         </div>
 
-        <!-- Otomatik Ödeme, Özgür İsim Girişi ve Banka Seçimi -->
         <div class="space-y-3 bg-slate-900 p-3 rounded-lg border border-slate-700">
           <div class="flex items-center gap-3">
             <input type="checkbox" id="billIsAutoPay" onchange="toggleBankSelect()" class="w-4 h-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500">
@@ -312,25 +317,21 @@
       }
     }
 
-    // Gelecek Aylar İçin Şablon Otomatik Doldurma
     function autoFillLastBillTemplate() {
-      // Eğer düzenleme modundaysak otomatik doldurma yapma
       if (document.getElementById('billId').value) return;
 
       const propId = document.getElementById('billPropertyId').value;
-      const cat = document.getElementById('billCategory').value;
+      const cat = document.getElementById('billCategory').value.trim();
 
-      // O mülk ve kategoriye ait en son girilen faturayı bul
-      const matchBills = bills.filter(b => b.propertyId === propId && b.category === cat);
+      const matchBills = bills.filter(b => b.propertyId === propId && b.category.toLowerCase() === cat.toLowerCase());
       
       if (matchBills.length > 0) {
-        const lastBill = matchBills[matchBills.length - 1]; // en sonuncusu
+        const lastBill = matchBills[matchBills.length - 1];
         document.getElementById('billAboneNo').value = lastBill.aboneNo || '';
         document.getElementById('billIsAutoPay').checked = lastBill.isAutoPay || false;
         document.getElementById('billAccountOwner').value = lastBill.accountOwner || '';
         document.getElementById('billBankName').value = lastBill.bankName || 'Garanti BBVA';
       } else {
-        // Önceden fatura yoksa mülk varsayılanlarını al
         const prop = properties.find(p => p.id === propId);
         if (prop) {
           if (cat === 'Elektrik') document.getElementById('billAboneNo').value = prop.elekNo || '';
@@ -384,7 +385,7 @@
           <div class="bg-slate-800 p-4 rounded-xl border ${b.isPaid ? 'border-slate-700/60 opacity-75' : 'border-slate-700'} flex items-center justify-between gap-4">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold ${b.isPaid ? 'bg-slate-700 text-slate-400' : 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'}">
-                ${b.category.charAt(0)}
+                ${b.category.charAt(0).toUpperCase()}
               </div>
               <div>
                 <div class="flex items-center gap-2 flex-wrap">
@@ -394,7 +395,7 @@
                 </div>
                 <div class="text-xs text-slate-400 mt-1 flex gap-3 flex-wrap">
                   <span>Son Ödeme: <strong class="text-slate-300">${b.dueDate}</strong></span>
-                  ${b.aboneNo ? `<span>Abone No: <strong class="text-slate-300">${b.aboneNo}</strong></span>` : ''}
+                  ${b.aboneNo ? `<span>Abone/No: <strong class="text-slate-300">${b.aboneNo}</strong></span>` : ''}
                 </div>
               </div>
             </div>
@@ -557,7 +558,7 @@
       const billData = {
         id: billId || Date.now().toString(),
         propertyId: document.getElementById('billPropertyId').value,
-        category: document.getElementById('billCategory').value,
+        category: document.getElementById('billCategory').value.trim(),
         aboneNo: document.getElementById('billAboneNo').value,
         amount: parseFloat(document.getElementById('billAmount').value),
         dueDate: document.getElementById('billDueDate').value,
