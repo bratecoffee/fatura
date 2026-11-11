@@ -89,16 +89,13 @@
             <button onclick="setStatusFilter('PAID')" id="btnStatusPAID" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-white">Ödenenler</button>
             <button onclick="setStatusFilter('AUTO')" id="btnStatusAUTO" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-white">Otomatik Ödeme</button>
           </div>
-          <input type="text" id="searchInput" oninput="filterBills()" placeholder="Fatura / Abone / Kişi ara..." class="bg-slate-900 border border-slate-700 text-xs text-slate-200 px-3 py-2 rounded-lg outline-none focus:border-indigo-500 w-full sm:w-56">
+          <input type="text" id="searchInput" oninput="filterBills()" placeholder="Fatura / Abone / İsim ara..." class="bg-slate-900 border border-slate-700 text-xs text-slate-200 px-3 py-2 rounded-lg outline-none focus:border-indigo-500 w-full sm:w-56">
         </div>
 
         <div id="billContainer" class="space-y-3"></div>
       </div>
 
-      <!-- Sağ Panel: Kişi & Banka Bazlı Bakiye Özeti ve Grafik -->
       <div class="space-y-6">
-        
-        <!-- YENİ: Hesap Sahibine ve Bankaya Göre Olması Gereken Bakiye -->
         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-3">
           <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2 border-b border-slate-700/60 pb-2">
             <i class="fa-solid fa-wallet text-blue-400"></i> Banka Hesaplarında Olması Gereken
@@ -115,28 +112,29 @@
             <canvas id="propertyChart"></canvas>
           </div>
         </div>
-
       </div>
     </div>
   </main>
 
-  <!-- Modal: Fatura Ekle -->
+  <!-- Modal: Fatura Ekle / Düzenle -->
   <div id="billModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
     <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-4">
       <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-        <h3 class="font-bold text-slate-100">Yeni Fatura Ekle</h3>
+        <h3 id="modalTitle" class="font-bold text-slate-100">Yeni Fatura Ekle</h3>
         <button onclick="closeBillModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="billForm" onsubmit="saveBill(event)" class="space-y-3">
+        <input type="hidden" id="billId">
+        
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1">Mülk Seçin</label>
-          <select id="billPropertyId" onchange="autoFillAboneNo()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none" required></select>
+          <select id="billPropertyId" onchange="autoFillLastBillTemplate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none" required></select>
         </div>
         
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Fatura Türü</label>
-            <select id="billCategory" onchange="autoFillAboneNo()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none">
+            <select id="billCategory" onchange="autoFillLastBillTemplate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 text-sm focus:border-indigo-500 outline-none">
               <option value="Elektrik">⚡ Elektrik</option>
               <option value="Su">💧 Su</option>
               <option value="Doğalgaz">🔥 Doğalgaz</option>
@@ -162,7 +160,7 @@
           </div>
         </div>
 
-        <!-- YENİ: Otomatik Ödeme, Hesap Sahibi ve Banka Seçimi -->
+        <!-- Otomatik Ödeme, Özgür İsim Girişi ve Banka Seçimi -->
         <div class="space-y-3 bg-slate-900 p-3 rounded-lg border border-slate-700">
           <div class="flex items-center gap-3">
             <input type="checkbox" id="billIsAutoPay" onchange="toggleBankSelect()" class="w-4 h-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500">
@@ -174,15 +172,8 @@
           <div id="bankSelectContainer" class="hidden pt-2 border-t border-slate-800 space-y-2">
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Hesap Sahibi</label>
-                <select id="billAccountOwner" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 text-xs focus:border-indigo-500 outline-none">
-                  <option value="Benim Hesabım">Benim Hesabım</option>
-                  <option value="Annemin Hesabı">Annemin Hesabı</option>
-                  <option value="Babamın Hesabı">Babamın Hesabı</option>
-                  <option value="Kardeşimin Hesabı">Kardeşimin Hesabı</option>
-                  <option value="Eşimin Hesabı">Eşimin Hesabı</option>
-                  <option value="Diğer">Diğer</option>
-                </select>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Hesap Sahibi İsim</label>
+                <input type="text" id="billAccountOwner" placeholder="Örn: Ahmet, Mehmet" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 text-xs focus:border-indigo-500 outline-none">
               </div>
               <div>
                 <label class="block text-[11px] font-semibold text-slate-400 mb-1">Banka Adı</label>
@@ -321,18 +312,36 @@
       }
     }
 
-    function autoFillAboneNo() {
+    // Gelecek Aylar İçin Şablon Otomatik Doldurma
+    function autoFillLastBillTemplate() {
+      // Eğer düzenleme modundaysak otomatik doldurma yapma
+      if (document.getElementById('billId').value) return;
+
       const propId = document.getElementById('billPropertyId').value;
       const cat = document.getElementById('billCategory').value;
-      const input = document.getElementById('billAboneNo');
 
-      const prop = properties.find(p => p.id === propId);
-      if (!prop) return;
-
-      if (cat === 'Elektrik') input.value = prop.elekNo || '';
-      else if (cat === 'Su') input.value = prop.suNo || '';
-      else if (cat === 'Doğalgaz') input.value = prop.gazNo || '';
-      else input.value = '';
+      // O mülk ve kategoriye ait en son girilen faturayı bul
+      const matchBills = bills.filter(b => b.propertyId === propId && b.category === cat);
+      
+      if (matchBills.length > 0) {
+        const lastBill = matchBills[matchBills.length - 1]; // en sonuncusu
+        document.getElementById('billAboneNo').value = lastBill.aboneNo || '';
+        document.getElementById('billIsAutoPay').checked = lastBill.isAutoPay || false;
+        document.getElementById('billAccountOwner').value = lastBill.accountOwner || '';
+        document.getElementById('billBankName').value = lastBill.bankName || 'Garanti BBVA';
+      } else {
+        // Önceden fatura yoksa mülk varsayılanlarını al
+        const prop = properties.find(p => p.id === propId);
+        if (prop) {
+          if (cat === 'Elektrik') document.getElementById('billAboneNo').value = prop.elekNo || '';
+          else if (cat === 'Su') document.getElementById('billAboneNo').value = prop.suNo || '';
+          else if (cat === 'Doğalgaz') document.getElementById('billAboneNo').value = prop.gazNo || '';
+          else document.getElementById('billAboneNo').value = '';
+        }
+        document.getElementById('billIsAutoPay').checked = false;
+        document.getElementById('billAccountOwner').value = '';
+      }
+      toggleBankSelect();
     }
 
     function toggleBankSelect() {
@@ -381,7 +390,7 @@
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="text-xs font-bold text-indigo-400 bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-800/50">${prop.name}</span>
                   <h4 class="font-semibold text-slate-100 text-sm">${b.category}</h4>
-                  ${b.isAutoPay ? `<span class="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded flex items-center gap-1"><i class="fa-solid fa-building-columns"></i> ${b.accountOwner || 'Hesap'} - ${b.bankName || 'Banka'}</span>` : ''}
+                  ${b.isAutoPay ? `<span class="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded flex items-center gap-1"><i class="fa-solid fa-building-columns"></i> ${b.accountOwner || 'Kişi'} - ${b.bankName || 'Banka'}</span>` : ''}
                 </div>
                 <div class="text-xs text-slate-400 mt-1 flex gap-3 flex-wrap">
                   <span>Son Ödeme: <strong class="text-slate-300">${b.dueDate}</strong></span>
@@ -398,10 +407,13 @@
                 </span>
               </div>
               <div class="flex gap-1">
-                <button onclick="togglePay('${b.id}')" class="p-2 text-xs rounded-lg ${b.isPaid ? 'bg-slate-700 text-slate-300' : 'bg-emerald-600 text-white'} hover:opacity-90">
+                <button onclick="editBill('${b.id}')" title="Düzenle" class="p-2 text-xs bg-slate-700 hover:bg-slate-600 text-indigo-300 rounded-lg">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                <button onclick="togglePay('${b.id}')" title="Ödeme Durumu Değiştir" class="p-2 text-xs rounded-lg ${b.isPaid ? 'bg-slate-700 text-slate-300' : 'bg-emerald-600 text-white'} hover:opacity-90">
                   <i class="fa-solid ${b.isPaid ? 'fa-rotate-left' : 'fa-check'}"></i>
                 </button>
-                <button onclick="deleteBill('${b.id}')" class="p-2 text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg">
+                <button onclick="deleteBill('${b.id}')" title="Sil" class="p-2 text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg">
                   <i class="fa-solid fa-trash"></i>
                 </button>
               </div>
@@ -424,14 +436,13 @@
       document.getElementById('statAutoPay').innerText = auto.toLocaleString('tr-TR') + ' ₺';
     }
 
-    // Kişi + Banka Bazlı Bakiye Özeti
     function renderBankSummary() {
       const container = document.getElementById('bankSummaryList');
       
       const bankTotals = {};
       bills.filter(b => b.isAutoPay && !b.isPaid).forEach(b => {
-        const owner = b.accountOwner || 'Hesap Belirtilmedi';
-        const bank = b.bankName || 'Banka Belirtilmedi';
+        const owner = b.accountOwner || 'Belirtilmedi';
+        const bank = b.bankName || 'Belirtilmedi';
         const key = `${owner} (${bank})`;
         bankTotals[key] = (bankTotals[key] || 0) + parseFloat(b.amount);
       });
@@ -506,17 +517,45 @@
     }
 
     function openBillModal() { 
+      document.getElementById('billId').value = '';
+      document.getElementById('modalTitle').innerText = 'Yeni Fatura Ekle';
+      document.getElementById('billForm').reset();
       document.getElementById('billModal').classList.remove('hidden');
-      autoFillAboneNo();
+      autoFillLastBillTemplate();
     }
-    function closeBillModal() { document.getElementById('billModal').classList.add('hidden'); }
+
+    function editBill(id) {
+      const b = bills.find(x => x.id === id);
+      if (!b) return;
+
+      document.getElementById('billId').value = b.id;
+      document.getElementById('modalTitle').innerText = 'Faturayı Düzenle';
+      document.getElementById('billPropertyId').value = b.propertyId;
+      document.getElementById('billCategory').value = b.category;
+      document.getElementById('billAboneNo').value = b.aboneNo || '';
+      document.getElementById('billAmount').value = b.amount;
+      document.getElementById('billDueDate').value = b.dueDate;
+      document.getElementById('billIsAutoPay').checked = b.isAutoPay || false;
+      document.getElementById('billAccountOwner').value = b.accountOwner || '';
+      document.getElementById('billBankName').value = b.bankName || 'Garanti BBVA';
+      document.getElementById('billIsPaid').checked = b.isPaid || false;
+
+      toggleBankSelect();
+      document.getElementById('billModal').classList.remove('hidden');
+    }
+
+    function closeBillModal() { 
+      document.getElementById('billModal').classList.add('hidden'); 
+      document.getElementById('billForm').reset();
+    }
 
     async function saveBill(e) {
       e.preventDefault();
+      const billId = document.getElementById('billId').value;
       const isAuto = document.getElementById('billIsAutoPay').checked;
 
-      const newBill = {
-        id: Date.now().toString(),
+      const billData = {
+        id: billId || Date.now().toString(),
         propertyId: document.getElementById('billPropertyId').value,
         category: document.getElementById('billCategory').value,
         aboneNo: document.getElementById('billAboneNo').value,
@@ -529,13 +568,12 @@
       };
 
       await fetch(`${API_URL}/api/bills`, {
-        method: 'POST',
+        method: billId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newBill)
+        body: JSON.stringify(billData)
       });
 
       closeBillModal();
-      document.getElementById('billForm').reset();
       await loadData();
     }
 
